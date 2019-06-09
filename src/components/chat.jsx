@@ -180,7 +180,7 @@ class Chat extends Component {
     return (
       <div className="content">
         <div className="contact-profile">
-          <img src="http://emilcarlsson.se/assets/harveyspecter.png" alt="" />
+          <img src="/harveyspecter.png" alt="" />
           <p className="mx-auto">{this.state.title}</p>
         </div>
         <div className="messages">
@@ -196,10 +196,7 @@ class Chat extends Component {
                         this.messagesEndRef = el;
                       }}
                     >
-                      <img
-                        src="http://emilcarlsson.se/assets/mikeross.png"
-                        alt=""
-                      />
+                      <img src="/mikeross.png" alt="" />
                       <p>{msg.message}</p>
                     </li>
                   )) || (
@@ -210,10 +207,7 @@ class Chat extends Component {
                         this.messagesEndRef = el;
                       }}
                     >
-                      <img
-                        src="http://emilcarlsson.se/assets/harveyspecter.png"
-                        alt=""
-                      />
+                      <img src="/harveyspecter.png" alt="" />
                       <p>{msg.message}</p>
                     </li>
                   )
@@ -221,11 +215,11 @@ class Chat extends Component {
               })}
           </ul>
         </div>
-        <div className="message-input">
-          <div className="wrap p-2">
+        <div className="message-input mb-3">
+          <div className="wrap">
             {this.state.error && this.state.error.length > 0 && (
               <div className="error-msg">
-                <div className="my-2 btn btn-outline-danger disabled error-msg">
+                <div className="my-4 btn btn-outline-danger disabled error-msg">
                   {this.state.error}
                 </div>
               </div>
@@ -233,7 +227,7 @@ class Chat extends Component {
             <div className="recordcontainer">
               {this.state.typeing ? (
                 <div className="tempdiv">
-                  <span className="textInputSpan">
+                  <span className="textInputSpan ml-2">
                     <input
                       className="textInput"
                       ref={el => (this.textInputref = el)}
@@ -273,14 +267,17 @@ class Chat extends Component {
                     this.getUserMedia();
                   }}
                 >
-                  <i className="fa fa-microphone fa-10x" />
-                  {this.state.loading && <img src={actions.loading} alt="" />}
+                  {this.state.loading ? (
+                    <img src={actions.loading} alt="" />
+                  ) : (
+                    <i className="fa fa-microphone fa-10x" />
+                  )}
                 </button>
               )}
 
               <button
                 id="type-btn"
-                className="buttonType"
+                className="mr-2 buttonType"
                 title={this.state.typeing ? "Speek Instead" : "Type Instead"}
                 onClick={e => {
                   this.setState({ typeing: !this.state.typeing });

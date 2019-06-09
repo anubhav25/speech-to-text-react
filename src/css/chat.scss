@@ -165,7 +165,7 @@ body {
     .textInputSpan {
       position: absolute;
       float: left;
-      width: 70%;
+      width: calc(100% - 170px);
       font-size: 1.5em;
 
       // the border gradient
@@ -219,8 +219,8 @@ body {
       float: right;
       width: 80px;
       height: 40px;
-      margin-left: 0;
-      margin-right: 10%;
+      margin-left: 1%;
+      margin-right: 1%;
       margin-top: auto;
       margin-bottom: auto;
       border-radius: 20px;
