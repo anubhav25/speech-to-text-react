@@ -1,6 +1,5 @@
 import React, { Component } from "react";
-import "../css/App.scss";
-import { connect } from "react-redux";
+import "../css/chat.scss";
 import * as actions from "../actions";
 import socketIOClient from "socket.io-client";
 import SocketIOFileUpload from "socketio-file-upload";
@@ -11,14 +10,36 @@ class Chat extends Component {
     this.state = {
       title: "Speech-to-Text",
       record: false,
-      messages: []
+      messages: [],
+      error: "",
+      typeing: false,
+      loading: false
     };
+
     this.socket = socketIOClient(actions.baseUri);
     this.uploader = new SocketIOFileUpload(this.socket);
     this.socket.on("message", data => {
-      this.setState({ messages: [...this.state.messages, data] });
+      this.error = "";
+      if (data.message !== undefined) {
+        if (data.message.length === 0) {
+          this.setState({
+            error: "Can't understand you properly!! Could you please repeat.",
+            loading: false
+          });
+        } else {
+          this.setState({
+            messages: [...this.state.messages, data],
+            error: "",
+            loading: false
+          });
+        }
+      } else {
+        this.setState({ error: "Server Error", loading: false });
+      }
     });
   }
+  pulseInterval = null;
+  messagesEndRef = null;
   chunks = [];
   mediaRecorder = null;
   myStream = null;
@@ -28,9 +49,39 @@ class Chat extends Component {
   node = null;
   input = null;
   stream = null;
-  componentWillMount() {
+  textInputref = null;
+
+  scrollToBottom = () => {
+    this.messagesEndRef &&
+      this.messagesEndRef.scrollIntoView({ behavior: "smooth" });
+  };
+  componentDidUpdate = () => {
+    this.scrollToBottom();
+    let target = document.getElementById("record-btn");
+    if (this.state.record) {
+      this.pulseInterval =
+        target &&
+        setInterval(() => {
+          target.classList.toggle("pulse");
+        }, 700);
+    } else {
+      this.pulseInterval && clearInterval(this.pulseInterval);
+    }
+  };
+  sendTextMsg = e => {
+    if (this.textInputref) {
+      let data = this.textInputref.value || "";
+      this.textInputref.value = "";
+      console.log(data);
+      data && this.socket.emit("message_recieved", { data });
+    }
+  };
+  componentWillMount = () => {
+    window.testMessage = data => {
+      this.socket.emit("message_recieved", { data });
+    };
     this.encoder = new Worker("encoder.js");
-    this.encoder.postMessage({ cmd: "init" });
+    //this.encoder.postMessage({ cmd: "init" });
     this.encoder.onmessage = e => {
       if (e.data.cmd === "end") {
         console.log(e.data.buf);
@@ -38,7 +89,8 @@ class Chat extends Component {
         const formData = new FormData();
         formData.append("blob", e.data.buf, "temp.flac");
         this.uploader.submitFiles([new File([e.data.buf], "temp.flac")]);
-        this.props.dispachVoice(formData);
+        this.setState({ loading: true });
+        //this.props.dispachVoice(formData);
         //this.encoder.terminate();
         //window.encoder = null;
       } else {
@@ -51,7 +103,7 @@ class Chat extends Component {
       cmd: "init",
       config: { samplerate: 44100, bps: 16, channels: 1, compression: 5 }
     });
-  }
+  };
 
   gotUserMedia = stream => {
     //    var mstream = new MediaStream(stream);
@@ -123,78 +175,124 @@ class Chat extends Component {
       this.input = this.node = null;
     }
   };
+
   render() {
     return (
-      <div className="chat">
-        <div className="chat-header clearfix">
-          <img className="rounded-circle" src={actions.thumb} alt="avatar" />
-          <div className="chat-with mx-auto">{this.state.title}</div>
+      <div className="content">
+        <div className="contact-profile">
+          <img src="http://emilcarlsson.se/assets/harveyspecter.png" alt="" />
+          <p className="mx-auto">{this.state.title}</p>
         </div>
-        <div className="chat-history">
+        <div className="messages">
           <ul>
             {this.state.messages.length > 0 &&
               this.state.messages.map((msg, index) => {
                 return (
                   (msg.from === "me" && (
-                    <li key={index}>
-                      <div className="message-data align-right">
-                        <span className="message-data-time">{msg.time}</span>{" "}
-                        &nbsp; &nbsp;
-                        <span className="message-data-name">
-                          {msg.from}
-                        </span>{" "}
-                        <i className="fa fa-circle me" />
-                      </div>
-                      <div className="message other-message float-right">
-                        <p>{msg.message}</p>
-                      </div>
+                    <li
+                      key={index}
+                      className="replies"
+                      ref={el => {
+                        this.messagesEndRef = el;
+                      }}
+                    >
+                      <img
+                        src="http://emilcarlsson.se/assets/mikeross.png"
+                        alt=""
+                      />
+                      <p>{msg.message}</p>
                     </li>
                   )) || (
-                    <li key={index}>
-                      <div className="message-data">
-                        <span className="message-data-name">
-                          <i className="fa fa-circle online" /> {msg.from}
-                        </span>
-                        <span className="message-data-time">{msg.time}</span>
-                      </div>
-                      <div className="message my-message">
-                        <p>{msg.message}</p>
-                      </div>
+                    <li
+                      key={index}
+                      className="sent"
+                      ref={el => {
+                        this.messagesEndRef = el;
+                      }}
+                    >
+                      <img
+                        src="http://emilcarlsson.se/assets/harveyspecter.png"
+                        alt=""
+                      />
+                      <p>{msg.message}</p>
                     </li>
                   )
                 );
               })}
           </ul>
         </div>
-        <div className="chat-message clearfix chatContainer my-auto">
-          <div className="float-left col-9 mx-auto">
-            <input
-              type="text"
-              name="message-to-send"
-              id="message-to-send"
-              placeholder="Type your message"
-            />
-          </div>
-          <div className="float-right col-3 mx-auto">
-            {(this.state.record && (
-              <button
-                onClick={() => {
-                  this.setState({ record: !this.state.record });
-                  this.stopMedia();
-                }}
-              >
-                STOP
-              </button>
-            )) || (
-              <button
-                onClick={() => {
-                  this.setState({ record: !this.state.record });
-                  this.getUserMedia();
-                }}
-              >
-                START
-              </button>
+        <div className="message-input">
+          <div className="wrap p-2">
+            {this.state.error && this.state.error.length > 0 && (
+              <div className="error-msg">
+                <div className="my-2 btn btn-outline-danger disabled error-msg">
+                  {this.state.error}
+                </div>
+              </div>
             )}
+            <div className="recordcontainer">
+              {this.state.typeing ? (
+                <div className="tempdiv">
+                  <span className="textInputSpan">
+                    <input
+                      className="textInput"
+                      ref={el => (this.textInputref = el)}
+                      placeholder="start typing here"
+                      onKeyUp={e => {
+                        if (e.which === 13) {
+                          this.sendTextMsg();
+                        }
+                      }}
+                    />
+                  </span>
+                  <button
+                    id="msg-send-btn"
+                    className="buttonSend"
+                    onClick={this.sendTextMsg}
+                  >
+                    <i className="fa fa-angle-double-up fa-10x" />
+                  </button>
+                </div>
+              ) : this.state.record ? (
+                <button
+                  id="record-btn"
+                  className="buttonMic"
+                  onClick={e => {
+                    this.setState({ record: !this.state.record });
+                    setTimeout(this.stopMedia, 1000);
+                  }}
+                >
+                  <i className="fa fa-stop fa-10x" />
+                </button>
+              ) : (
+                <button
+                  id="record-btn"
+                  className="buttonMic"
+                  onClick={e => {
+                    this.setState({ record: !this.state.record });
+                    this.getUserMedia();
+                  }}
+                >
+                  <i className="fa fa-microphone fa-10x" />
+                  {this.state.loading && <img src={actions.loading} alt="" />}
+                </button>
+              )}
+
+              <button
+                id="type-btn"
+                className="buttonType"
+                title={this.state.typeing ? "Speek Instead" : "Type Instead"}
+                onClick={e => {
+                  this.setState({ typeing: !this.state.typeing });
+                }}
+              >
+                {this.state.typeing ? (
+                  <i className="fa fa-microphone fa-10x" />
+                ) : (
+                  <i className="fa fa-pencil fa-10x" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -202,19 +300,4 @@ class Chat extends Component {
   }
 }
 
-const mapPropsToStore = store => {
-  return {
-    messages: store.messages || []
-  };
-};
-const mapDispatchToProps = dispach => {
-  return {
-    dispachVoice: payload => {
-      dispach({ type: actions.GETDATA, payload });
-    }
-  };
-};
-export default connect(
-  mapPropsToStore,
-  mapDispatchToProps
-)(Chat);
+export default Chat;
